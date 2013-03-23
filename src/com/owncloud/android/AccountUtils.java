@@ -33,7 +33,7 @@ public class AccountUtils {
     public static final String WEBDAV_PATH_2_0 = "/files/webdav.php";
     public static final String WEBDAV_PATH_4_0 = "/remote.php/webdav";
     public static final String CARDDAV_PATH_2_0 = "/apps/contacts/carddav.php";
-    public static final String CARDDAV_PATH_4_0 = "/remote/carddav.php";
+    public static final String CARDDAV_PATH_4_0 = "/remote.php/carddav";
     public static final String STATUS_PATH = "/status.php";
 
     /**
@@ -105,6 +105,21 @@ public class AccountUtils {
                 return WEBDAV_PATH_2_0;
             if (version.compareTo(OwnCloudVersion.owncloud_v1) >= 0)
                 return WEBDAV_PATH_1_2;
+        }
+        return null;
+    }
+    /**
+     * 
+     * @param version version of owncloud
+     * @return webdav path for given OC version, null if OC version unknown
+     */
+    public static String getCarddavPath(OwnCloudVersion version) {
+        if (version != null) {
+            if (version.compareTo(OwnCloudVersion.owncloud_v4) >= 0)
+                return CARDDAV_PATH_4_0;
+            if (version.compareTo(OwnCloudVersion.owncloud_v3) >= 0
+                    || version.compareTo(OwnCloudVersion.owncloud_v2) >= 0)
+                return CARDDAV_PATH_2_0;
         }
         return null;
     }

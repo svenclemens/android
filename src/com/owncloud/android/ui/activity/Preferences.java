@@ -20,8 +20,12 @@ package com.owncloud.android.ui.activity;
 
 import java.util.Vector;
 
+import android.accounts.Account;
+import android.accounts.AccountManager;
+import android.content.ContentProviderClient;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.SyncResult;
 import android.os.Bundle;
 import android.preference.CheckBoxPreference;
 import android.preference.ListPreference;
@@ -29,6 +33,8 @@ import android.preference.Preference;
 import android.preference.PreferenceManager;
 import android.preference.Preference.OnPreferenceChangeListener;
 import android.preference.Preference.OnPreferenceClickListener;
+import android.provider.ContactsContract;
+import android.provider.ContactsContract.Contacts;
 import android.util.Log;
 
 import com.actionbarsherlock.app.ActionBar;
@@ -37,6 +43,7 @@ import com.actionbarsherlock.view.Menu;
 import com.actionbarsherlock.view.MenuItem;
 import com.owncloud.android.OwnCloudSession;
 import com.owncloud.android.db.DbHandler;
+import com.owncloud.android.syncadapter.ContactSyncAdapter;
 
 import com.owncloud.android.R;
 
@@ -58,6 +65,7 @@ public class Preferences extends SherlockPreferenceActivity implements
     private ListPreference mTrackingUpdateInterval;
     private CheckBoxPreference mDeviceTracking;
     private CheckBoxPreference pCode;
+    private CheckBoxPreference pContactSync;
     private int mSelectedMenuItem;
 
     @Override
@@ -83,7 +91,7 @@ public class Preferences extends SherlockPreferenceActivity implements
         pCode = (CheckBoxPreference) findPreference("set_pincode");
          
         
-        if (pCode != null){
+        if (pCode != null) {
             
             pCode.setOnPreferenceChangeListener(new OnPreferenceChangeListener() {
                 @Override
@@ -98,6 +106,38 @@ public class Preferences extends SherlockPreferenceActivity implements
                     return true;
                 }
             });            
+            
+        }
+        pContactSync = (CheckBoxPreference) findPreference("contact_sync");
+        if (pContactSync != null) {
+           
+            
+            pContactSync.setOnPreferenceChangeListener(new OnPreferenceChangeListener() {
+                
+                @Override
+                public boolean onPreferenceChange(Preference preference, Object newValue) {
+                                          if (!pContactSync.isChecked()) {
+                                              AccountManager accountManager = AccountManager.get(getApplicationContext());
+                                              Account[] accounts = accountManager.getAccounts();
+                                              Bundle extraBundle = new Bundle();
+                                              ContentProviderClient contentProviderClient = getContentResolver().acquireContentProviderClient(ContactsContract.Contacts.CONTENT_URI);
+                                              SyncResult syncresult = new SyncResult();
+                                             ContactSyncAdapter csa = new ContactSyncAdapter(getApplicationContext(),true);
+                                             
+                                             csa.onPerformSync(accounts[0], extraBundle, ContactsContract.AUTHORITY, contentProviderClient, syncresult);
+                                          }
+                                          
+//                    Intent i = new Intent(getApplicationContext(), PinCodeActivity.class);
+//                    i.putExtra(PinCodeActivity.EXTRA_ACTIVITY, "preferences");
+//                    i.putExtra(PinCodeActivity.EXTRA_NEW_STATE, newValue.toString());
+                    
+//                    startActivity(i);
+                
+                    return true;
+                                       
+                
+                    }
+                });     
             
         }
         

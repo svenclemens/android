@@ -32,7 +32,14 @@
     <CheckBoxPreference android:key="instant_uploading" 
                         android:title="@string/prefs_instant_upload"  
                         android:summary="@string/prefs_instant_upload_summary"/>
-    <CheckBoxPreference android:dependency="instant_uploading" android:disableDependentsState="true" android:title="@string/instant_upload_on_wifi" android:key="instant_upload_on_wifi"/>
+    <CheckBoxPreference android:dependency="instant_uploading" 
+        				android:disableDependentsState="true" 
+        				android:title="@string/instant_upload_on_wifi" 
+        				android:key="instant_upload_on_wifi"/>
+    <CheckBoxPreference android:key="contact_sync" 
+                        android:title="@string/prefs_contact_sync"  
+                        android:summary="@string/prefs_contact_sync_summary"/>
+    
     
 	</PreferenceCategory>
     

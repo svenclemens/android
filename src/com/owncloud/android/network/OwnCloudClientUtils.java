@@ -120,7 +120,7 @@ public class OwnCloudClientUtils {
     public static WebdavClient createOwnCloudClient(Uri uri, Context context) {
         Log.d(TAG, "Creating WebdavClient for " + uri);
         
-        //allowSelfsignedCertificates(true);
+//        allowSelfsignedCertificates(true);
         try {
             registerAdvancedSslContext(true, context);
         }  catch (GeneralSecurityException e) {
@@ -139,11 +139,13 @@ public class OwnCloudClientUtils {
     }
     
     
+    
+    
     /**
      * Registers or unregisters the proper components for advanced SSL handling.
      * @throws IOException 
      */
-    private static void registerAdvancedSslContext(boolean register, Context context) throws GeneralSecurityException, IOException {
+    public static void registerAdvancedSslContext(boolean register, Context context) throws GeneralSecurityException, IOException {
         Protocol pr = null;
         try {
             pr = Protocol.getProtocol("https");
