@@ -22,8 +22,10 @@ package com.owncloud.android.syncadapter;
 import android.app.Service;
 import android.content.Intent;
 import android.os.IBinder;
+import android.util.Log;
 
 public class ContactSyncService extends Service {
+    private static final String TAG = "ContactSyncService";
     private static final Object syncAdapterLock = new Object();
     private static AbstractOwnCloudSyncAdapter mSyncAdapter = null;
 
@@ -31,6 +33,7 @@ public class ContactSyncService extends Service {
     public void onCreate() {
         synchronized (syncAdapterLock) {
             if (mSyncAdapter == null) {
+                Log.d(TAG, "onCreate");
                 mSyncAdapter = new ContactSyncAdapter(getApplicationContext(),
                         true);
             }
@@ -39,6 +42,7 @@ public class ContactSyncService extends Service {
 
     @Override
     public IBinder onBind(Intent arg0) {
+        Log.d(TAG, "onBind");
         return mSyncAdapter.getSyncAdapterBinder();
     }
 

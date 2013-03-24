@@ -22,6 +22,8 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.Socket;
+import java.net.URL;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
@@ -32,10 +34,18 @@ import java.security.cert.CertificateException;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
 
+import org.apache.commons.httpclient.Header;
+import org.apache.commons.httpclient.HostConfiguration;
+import org.apache.commons.httpclient.HttpClient;
+import org.apache.commons.httpclient.HttpHost;
 import org.apache.commons.httpclient.MultiThreadedHttpConnectionManager;
+import org.apache.commons.httpclient.methods.GetMethod;
 import org.apache.commons.httpclient.protocol.Protocol;
+import org.apache.http.HttpStatus;
 import org.apache.http.conn.ssl.BrowserCompatHostnameVerifier;
 import org.apache.http.conn.ssl.X509HostnameVerifier;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
 
 import com.owncloud.android.AccountUtils;
 
@@ -145,7 +155,7 @@ public class OwnCloudClientUtils {
      * Registers or unregisters the proper components for advanced SSL handling.
      * @throws IOException 
      */
-    public static void registerAdvancedSslContext(boolean register, Context context) throws GeneralSecurityException, IOException {
+    private static void registerAdvancedSslContext(boolean register, Context context) throws GeneralSecurityException, IOException {
         Protocol pr = null;
         try {
             pr = Protocol.getProtocol("https");
@@ -164,6 +174,34 @@ public class OwnCloudClientUtils {
                 Protocol.registerProtocol("https", mDefaultHttpsProtocol);
             }
         }
+    }
+    
+    public static Document getContactInputStream (Context context, URL url, HttpClient httpClient) {
+        HttpHost httpHost = new HttpHost(url.getHost());
+        GetMethod httpGet = new GetMethod(url.getFile());
+        Document doc = null;
+        try {
+                registerAdvancedSslContext(true, context);
+                httpGet.setDoAuthentication(true);
+                HostConfiguration hostconfig = HostConfiguration.ANY_HOST_CONFIGURATION;
+                hostconfig.setHost(httpHost);
+                httpClient.setHostConfiguration(hostconfig);
+                int status = httpClient.executeMethod(httpGet);
+                if (status == HttpStatus.SC_OK) {
+                Log.d(TAG, "HttpSTATUS  is " + status);
+                }
+                if (httpGet.getResponseBodyAsStream() != null) {
+                    doc = Jsoup.parse(httpGet.getResponseBodyAsStream(), httpGet.getResponseCharSet(), httpGet.getURI().getHost());
+                    return doc;
+                }
+        } catch (GeneralSecurityException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            httpGet.releaseConnection();
+        }
+       return null;
     }
     
     public static AdvancedSslSocketFactory getAdvancedSslSocketFactory(Context context) throws GeneralSecurityException, IOException {

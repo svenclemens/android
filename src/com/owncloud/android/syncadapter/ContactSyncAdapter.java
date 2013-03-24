@@ -24,41 +24,26 @@ package com.owncloud.android.syncadapter;
 
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.net.MalformedURLException;
-import java.net.Socket;
 import java.net.URL;
-import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.net.ssl.HostnameVerifier;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
-
+import org.apache.commons.httpclient.HttpClient;
+import org.apache.commons.httpclient.HttpVersion;
+import org.apache.commons.httpclient.UsernamePasswordCredentials;
+import org.apache.commons.httpclient.auth.AuthScope;
+import org.apache.commons.httpclient.params.HttpMethodParams;
 import org.apache.http.client.methods.HttpPut;
 import org.apache.http.entity.ByteArrayEntity;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.NodeList;
-import org.xml.sax.InputSource;
-import org.xml.sax.SAXException;
-import org.xml.sax.XMLReader;
-import org.xml.sax.helpers.XMLReaderFactory;
-
-import com.owncloud.android.AccountUtils;
-import com.owncloud.android.authenticator.AccountAuthenticator;
-import com.owncloud.android.network.AdvancedSslSocketFactory;
-import com.owncloud.android.network.AdvancedX509TrustManager;
-import com.owncloud.android.network.OwnCloudClientUtils;
-import com.owncloud.android.utils.OwnCloudVersion;
+import org.apache.http.params.CoreProtocolPNames;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 
 import android.accounts.Account;
 import android.accounts.AccountManager;
 import android.accounts.AuthenticatorException;
 import android.accounts.OperationCanceledException;
-import android.content.ContentProvider;
 import android.content.ContentProviderClient;
 import android.content.Context;
 import android.content.SyncResult;
@@ -66,108 +51,99 @@ import android.content.res.AssetFileDescriptor;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.StrictMode;
 import android.provider.ContactsContract;
+import android.util.Log;
+
+import com.owncloud.android.AccountUtils;
+import com.owncloud.android.authenticator.AccountAuthenticator;
+import com.owncloud.android.network.OwnCloudClientUtils;
+import com.owncloud.android.utils.OwnCloudVersion;
 
 public class ContactSyncAdapter extends AbstractOwnCloudSyncAdapter {
+    
+    private static final String TAG = "ContactSyncAdapter";
+    private static final String USER_AGENT = "Android-ownCloud";
     private String mAddrBookUri;
 
     public ContactSyncAdapter(Context context, boolean autoInitialize) {
         super(context, autoInitialize);
+        Log.d(TAG, "constructor reached");
         mAddrBookUri = null;
     }
 
     @Override
     public void onPerformSync(Account account, Bundle extras, String authority,
-            ContentProviderClient provider, SyncResult syncResult) {
+        ContentProviderClient provider, SyncResult syncResult) {
+//        android.os.Debug.waitForDebugger();
         setAccount(account);
         setContentProvider(provider);
+        String url = getAddressBookUri();
+        List<String> vcfList = getVCFList(url,account);
+        if (vcfList != null && vcfList.size() != 0) {
+            Log.d(TAG, "fertige VCFLISTE !!" + vcfList.toString());
+        }
+        
         Cursor c = getLocalContacts(false);
         if (c.moveToFirst()) {
             do {
                 
-                String url = getAddressBookUri();
-                List<String> vcfList = getVCFList(url);
+                
+                //TODO upload local contact
                 
                 
-               
             } while (c.moveToNext());
         }
-
     }
     
-    private List<String> getVCFList(String adressbookURL) {
-       
-        InputStream inputStream = null;
-        
+    private List<String> getVCFList(String adressbookURL,Account account) {
         List<String> vcfList = new ArrayList<String>(); 
-//        StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
-//        StrictMode.setThreadPolicy(policy); 
+        URL url = null; 
+        Document doc = null;
+        String username = account.name.substring(0, account.name.lastIndexOf('@'));
+        String password = AccountManager.get(getContext()).getPassword(account);
+        HttpClient httpClient = new HttpClient();
+        httpClient.getParams().setAuthenticationPreemptive(true);
+        httpClient.getState().setCredentials(AuthScope.ANY, new UsernamePasswordCredentials(username,password));
+        httpClient.getParams().setParameter(HttpMethodParams.USER_AGENT, USER_AGENT);
+        httpClient.getParams().setParameter(CoreProtocolPNames.PROTOCOL_VERSION, HttpVersion.HTTP_1_1);
         try {
-            OwnCloudClientUtils.registerAdvancedSslContext(true, getContext());
-        } catch (GeneralSecurityException e1) {
-            // TODO Auto-generated catch block
-            e1.printStackTrace();
-        } catch (IOException e1) {
-            // TODO Auto-generated catch block
-            e1.printStackTrace();
-        }
-//        try {
-//            AdvancedSslSocketFactory sslFactory = OwnCloudClientUtils.getAdvancedSslSocketFactory(getContext());
-//            if (sslFactory != null) {
-//               Socket socket =  sslFactory.createSocket("testcloud.haga.me", 443);
-//               inputStream = socket.getInputStream();
-//                
-//            }
-////            HostnameVerifier hostnameVerifier = sslFactory.getHostNameVerifier();
-////            hostnameVerifier.
-//            
-//        } catch (GeneralSecurityException e) {
-//            e.printStackTrace();
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
-        try {
-                DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-                DocumentBuilder db = dbf.newDocumentBuilder();
+            url = new URL(adressbookURL);
+            doc = OwnCloudClientUtils.getContactInputStream(getContext(), url, httpClient);  
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            if (doc != null) { 
+                //Leave this to check the outputstream
+                @SuppressWarnings("unused")
+                Elements content = doc.getAllElements();
+//                    Log.d(TAG,content.text());
                 
-                    Document doc = db.parse(inputStream);
-                    Element content = doc.getElementById("content");
-                    NodeList links = content.getElementsByTagName("a");
-                    for (int i=0; i<links.getLength(); i++) {
-                        Element element = (Element) links.item(i);
-                        if (element.hasAttribute("href")) {
-                            element.getAttribute("href");
-                            String fileURL = element.getTextContent();
-                            if (isVCFfile(fileURL)) {
-                                vcfList.add(fileURL);
-                            }
-                        }
-                    }
-                    
-                   return vcfList;
-               
-        } catch (MalformedURLException e) {
-                e.printStackTrace();  
-        } catch (ParserConfigurationException e) {
-            e.printStackTrace();
-        } catch (SAXException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return null;
+                Elements links = doc.getElementsByTag("a");
+                for (Element link : links) {
+                  @SuppressWarnings("unused")
+                  String linkHref = link.attr("href");
+                  String linkText = link.text();
+                  if(isVCFfile(linkText)) {
+                      vcfList.add(linkText);
+                  }
+//                  Log.d(TAG, linkText);
+                }
+            }
+        return vcfList;
     }
-    
+
     private boolean isVCFfile(String fileURL) {
         boolean result = false;
-        String[] fileSplited = fileURL.split("\\.");
-        if (fileSplited[fileSplited.length-1].equals("vcf")) {
-               result = true;
+        if (fileURL != null && fileURL.length() != 0) {
+            String[] fileSplited = fileURL.split("\\.");
+            if (fileSplited != null && fileSplited.length != 0) {
+                if (fileSplited[fileSplited.length-1].equals("vcf")) {
+                       result = true;
+                }
+            }
         }
         return result;
     }
-    
     
     private void compareVCards(String uri_path, Cursor c) {
         String lookup = c.getString(c
@@ -186,10 +162,8 @@ public class ContactSyncAdapter extends AbstractOwnCloudSyncAdapter {
             e.printStackTrace();
             return;
         } catch (OperationCanceledException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         } catch (AuthenticatorException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         }
     }
@@ -231,5 +205,7 @@ public class ContactSyncAdapter extends AbstractOwnCloudSyncAdapter {
                 new String[] { (include_hidden_contacts ? "0" : "1") },
                 ContactsContract.Contacts._ID + " DESC");
     }
-
 }
+
+
+

@@ -44,6 +44,7 @@ import com.actionbarsherlock.view.MenuItem;
 import com.owncloud.android.OwnCloudSession;
 import com.owncloud.android.db.DbHandler;
 import com.owncloud.android.syncadapter.ContactSyncAdapter;
+import com.owncloud.android.syncadapter.ContactSyncService;
 
 import com.owncloud.android.R;
 
@@ -114,33 +115,20 @@ public class Preferences extends SherlockPreferenceActivity implements
             
             pContactSync.setOnPreferenceChangeListener(new OnPreferenceChangeListener() {
                 
-                @Override
-                public boolean onPreferenceChange(Preference preference, Object newValue) {
-                                          if (!pContactSync.isChecked()) {
-                                              AccountManager accountManager = AccountManager.get(getApplicationContext());
-                                              Account[] accounts = accountManager.getAccounts();
-                                              Bundle extraBundle = new Bundle();
-                                              ContentProviderClient contentProviderClient = getContentResolver().acquireContentProviderClient(ContactsContract.Contacts.CONTENT_URI);
-                                              SyncResult syncresult = new SyncResult();
-                                             ContactSyncAdapter csa = new ContactSyncAdapter(getApplicationContext(),true);
-                                             
-                                             csa.onPerformSync(accounts[0], extraBundle, ContactsContract.AUTHORITY, contentProviderClient, syncresult);
-                                          }
-                                          
-//                    Intent i = new Intent(getApplicationContext(), PinCodeActivity.class);
-//                    i.putExtra(PinCodeActivity.EXTRA_ACTIVITY, "preferences");
-//                    i.putExtra(PinCodeActivity.EXTRA_NEW_STATE, newValue.toString());
-                    
-//                    startActivity(i);
-                
-                    return true;
-                                       
-                
-                    }
-                });     
-            
+            @Override
+            public boolean onPreferenceChange(Preference preference, Object newValue) {
+                  if (!pContactSync.isChecked()) {
+                     Intent intent = new Intent(getApplicationContext(), ContactSyncService.class);
+                     intent.addCategory("contacts_sync");
+                     startService(intent);
+                  }
+                  else {
+                     stopService(new Intent(getApplicationContext(), ContactSyncService.class));
+                  }
+                  return true;
+                }
+            });     
         }
-        
     }
 
 
