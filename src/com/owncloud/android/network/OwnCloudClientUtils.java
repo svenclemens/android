@@ -59,6 +59,7 @@ import android.accounts.Account;
 import android.accounts.AccountManager;
 import android.content.Context;
 import android.net.Uri;
+import android.os.Environment;
 import android.util.Log;
 
 public class OwnCloudClientUtils {
@@ -220,12 +221,19 @@ public class OwnCloudClientUtils {
                 httpClient.setHostConfiguration(hostconfig);
                 int status = httpClient.executeMethod(httpGet);
                 if (status == HttpStatus.SC_OK) {
-                Log.d(TAG, "HttpSTATUS  is " + status);
+                    Log.d(TAG, "HttpSTATUS  is " + status);
                 }
+                String path = Environment.getExternalStorageDirectory()+File.separator+"owncloud"+File.separator+"contacts";
+                File dir = new File(path);
+                
+                if (dir != null && !dir.exists()) {
+                    dir.mkdir();
+                }
+                
                 if (httpGet.getResponseBodyAsStream() != null) {
                     InputStream inputStream = httpGet.getResponseBodyAsStream();
                     try {
-                        OutputStream out = new FileOutputStream(new File(context.getFilesDir().getAbsolutePath()+"/"+filename));
+                        OutputStream out = new FileOutputStream(new File(path+File.separator+filename));
                         
                         int read = 0;
                         byte[] bytes = new byte[1024];
