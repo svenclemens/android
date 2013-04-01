@@ -17,11 +17,15 @@
  */
 package com.owncloud.android.network;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.Socket;
 import java.net.URL;
 import java.security.GeneralSecurityException;
@@ -176,7 +180,7 @@ public class OwnCloudClientUtils {
         }
     }
     
-    public static Document getContactInputStream (Context context, URL url, HttpClient httpClient) {
+    public static Document getListOfContacts (Context context, URL url, HttpClient httpClient) {
         HttpHost httpHost = new HttpHost(url.getHost());
         GetMethod httpGet = new GetMethod(url.getFile());
         Document doc = null;
@@ -202,6 +206,51 @@ public class OwnCloudClientUtils {
             httpGet.releaseConnection();
         }
        return null;
+    }
+    
+    public static BufferedInputStream getSingleContactInputStream (Context context, URL url,  HttpClient httpClient,String filename) {
+        HttpHost httpHost = new HttpHost(url.getHost());
+        GetMethod httpGet = new GetMethod(url.getFile());
+        BufferedInputStream bis = null;
+        try {
+                registerAdvancedSslContext(true, context);
+                httpGet.setDoAuthentication(true);
+                HostConfiguration hostconfig = HostConfiguration.ANY_HOST_CONFIGURATION;
+                hostconfig.setHost(httpHost);
+                httpClient.setHostConfiguration(hostconfig);
+                int status = httpClient.executeMethod(httpGet);
+                if (status == HttpStatus.SC_OK) {
+                Log.d(TAG, "HttpSTATUS  is " + status);
+                }
+                if (httpGet.getResponseBodyAsStream() != null) {
+                    InputStream inputStream = httpGet.getResponseBodyAsStream();
+                    try {
+                        OutputStream out = new FileOutputStream(new File(context.getFilesDir().getAbsolutePath()+"/"+filename));
+                        
+                        int read = 0;
+                        byte[] bytes = new byte[1024];
+                     
+                        while ((read = inputStream.read(bytes)) != -1) {
+                            out.write(bytes, 0, read);
+                        }
+                     
+                        inputStream.close();
+                        out.flush();
+                        out.close();
+                     
+                        Log.d(TAG,"New file created!");
+                    } catch (IOException e) {
+                        Log.d(TAG,e.getMessage());
+                    }
+                }
+        } catch (GeneralSecurityException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            httpGet.releaseConnection();
+        }
+       return bis;
     }
     
     public static AdvancedSslSocketFactory getAdvancedSslSocketFactory(Context context) throws GeneralSecurityException, IOException {

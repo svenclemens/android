@@ -113,9 +113,9 @@
                 android:name="android.content.SyncAdapter"
                 android:resource="@xml/syncadapter_files" />
         </service>
-        <service
+     	<service
             android:name=".syncadapter.ContactSyncService"
-            android:exported="true" >
+            >
             <intent-filter>
                 <action android:name="android.content.SyncAdapter" />
             </intent-filter>
@@ -131,6 +131,14 @@
             android:enabled="true"
             android:exported="false"
             android:label="@string/sync_string_files"
+            android:syncable="true" >
+        </provider>
+        <provider
+            android:name=".providers.FileContentProvider"
+            android:authorities="org.owncloud"
+            android:enabled="false"
+            android:exported="false"
+            android:label="Contacts Syncing"
             android:syncable="true" >
         </provider>
 

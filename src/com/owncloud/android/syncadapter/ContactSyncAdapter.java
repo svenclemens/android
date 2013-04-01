@@ -24,6 +24,7 @@ package com.owncloud.android.syncadapter;
 
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
@@ -52,6 +53,8 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.ContactsContract;
+import android.provider.ContactsContract.Contacts;
+import android.provider.ContactsContract.RawContacts;
 import android.util.Log;
 
 import com.owncloud.android.AccountUtils;
@@ -64,6 +67,7 @@ public class ContactSyncAdapter extends AbstractOwnCloudSyncAdapter {
     private static final String TAG = "ContactSyncAdapter";
     private static final String USER_AGENT = "Android-ownCloud";
     private String mAddrBookUri;
+    private Account account;
 
     public ContactSyncAdapter(Context context, boolean autoInitialize) {
         super(context, autoInitialize);
@@ -77,38 +81,45 @@ public class ContactSyncAdapter extends AbstractOwnCloudSyncAdapter {
 //        android.os.Debug.waitForDebugger();
         setAccount(account);
         setContentProvider(provider);
-        String url = getAddressBookUri();
+        String url = getURLFromOwncloudContacts();
         List<String> vcfList = getVCFList(url,account);
         if (vcfList != null && vcfList.size() != 0) {
             Log.d(TAG, "fertige VCFLISTE !!" + vcfList.toString());
+            for (String vcf : vcfList) {
+                try {
+                    saveNewContactInFile(account, new URL(url+vcf.toString()), vcf.toString());
+                } catch (MalformedURLException e) {
+                    e.printStackTrace();
+                }
+            }
         }
         
-        Cursor c = getLocalContacts(false);
-        if (c.moveToFirst()) {
-            do {
-                
-                
-                //TODO upload local contact
-                
-                
-            } while (c.moveToNext());
-        }
+//        Cursor c = getLocalContacts(false);
+//        if (c.moveToFirst()) {
+//            do {
+//                
+//                
+//                //TODO upload local contact
+//                
+//                
+//            } while (c.moveToNext());
+//        }
+    }
+    
+    private void saveNewContactInFile(Account account, URL url, String filename) {
+       OwnCloudClientUtils.getSingleContactInputStream(getContext(),url,getHttpClient(account),filename);
+        
+       
     }
     
     private List<String> getVCFList(String adressbookURL,Account account) {
         List<String> vcfList = new ArrayList<String>(); 
         URL url = null; 
         Document doc = null;
-        String username = account.name.substring(0, account.name.lastIndexOf('@'));
-        String password = AccountManager.get(getContext()).getPassword(account);
-        HttpClient httpClient = new HttpClient();
-        httpClient.getParams().setAuthenticationPreemptive(true);
-        httpClient.getState().setCredentials(AuthScope.ANY, new UsernamePasswordCredentials(username,password));
-        httpClient.getParams().setParameter(HttpMethodParams.USER_AGENT, USER_AGENT);
-        httpClient.getParams().setParameter(CoreProtocolPNames.PROTOCOL_VERSION, HttpVersion.HTTP_1_1);
+        
         try {
             url = new URL(adressbookURL);
-            doc = OwnCloudClientUtils.getContactInputStream(getContext(), url, httpClient);  
+            doc = OwnCloudClientUtils.getListOfContacts(getContext(), url, getHttpClient(account));  
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -132,6 +143,18 @@ public class ContactSyncAdapter extends AbstractOwnCloudSyncAdapter {
         return vcfList;
     }
 
+    private HttpClient getHttpClient(Account account) {
+        String username = account.name.substring(0, account.name.lastIndexOf('@'));
+        String password = AccountManager.get(getContext()).getPassword(account);
+        HttpClient httpClient = new HttpClient();
+        httpClient.getParams().setAuthenticationPreemptive(true);
+        httpClient.getState().setCredentials(AuthScope.ANY, new UsernamePasswordCredentials(username,password));
+        httpClient.getParams().setParameter(HttpMethodParams.USER_AGENT, USER_AGENT);
+        httpClient.getParams().setParameter(CoreProtocolPNames.PROTOCOL_VERSION, HttpVersion.HTTP_1_1);
+        return httpClient;
+    }
+    
+    
     private boolean isVCFfile(String fileURL) {
         boolean result = false;
         if (fileURL != null && fileURL.length() != 0) {
@@ -146,6 +169,8 @@ public class ContactSyncAdapter extends AbstractOwnCloudSyncAdapter {
     }
     
     private void compareVCards(String uri_path, Cursor c) {
+
+        
         String lookup = c.getString(c
                 .getColumnIndex(ContactsContract.Contacts.LOOKUP_KEY));
         
@@ -168,7 +193,7 @@ public class ContactSyncAdapter extends AbstractOwnCloudSyncAdapter {
         }
     }
 
-    private String getAddressBookUri() {
+    private String getURLFromOwncloudContacts() {
         if (mAddrBookUri != null)
             return mAddrBookUri;
 

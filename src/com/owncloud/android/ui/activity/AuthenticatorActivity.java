@@ -259,6 +259,7 @@ public class AuthenticatorActivity extends AccountAuthenticatorActivity
             setResult(RESULT_OK, intent);
             Bundle bundle = new Bundle();
             bundle.putBoolean(ContentResolver.SYNC_EXTRAS_MANUAL, true);
+            bundle.putBoolean(ContentResolver.SYNC_EXTRAS_MANUAL, true);
             //getContentResolver().startSync(ProviderTableMeta.CONTENT_URI,
             //        bundle);
             ContentResolver.requestSync(account, "org.owncloud", bundle);
