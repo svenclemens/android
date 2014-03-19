@@ -2,9 +2,8 @@
  *   Copyright (C) 2012-2013 ownCloud Inc.
  *
  *   This program is free software: you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation, either version 2 of the License, or
- *   (at your option) any later version.
+ *   it under the terms of the GNU General Public License version 2,
+ *   as published by the Free Software Foundation.
  *
  *   This program is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -19,6 +18,7 @@
 package com.owncloud.android.ui.dialog;
 
 import java.io.IOException;
+import java.security.GeneralSecurityException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
@@ -29,19 +29,20 @@ import java.util.Map;
 
 import javax.security.auth.x500.X500Principal;
 
+import com.owncloud.android.R;
+
 import android.app.Dialog;
 import android.content.Context;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
 import android.view.Window;
 import android.widget.Button;
 import android.widget.TextView;
 
-import com.owncloud.android.R;
-import com.owncloud.android.network.CertificateCombinedException;
-import com.owncloud.android.network.OwnCloudClientUtils;
-import com.owncloud.android.operations.RemoteOperationResult;
+import com.owncloud.android.lib.network.CertificateCombinedException;
+import com.owncloud.android.lib.network.NetworkUtils;
+import com.owncloud.android.lib.operations.common.RemoteOperationResult;
+import com.owncloud.android.utils.Log_OC;
 
 /**
  * Dialog to request the user about a certificate that could not be validated with the certificates store in the system.
@@ -64,7 +65,7 @@ public class SslValidatorDialog extends Dialog {
      * @param context       Android context where the dialog will live.
      * @param result        Result of a failed remote operation.
      * @param listener      Object to notice when the server certificate was added to the local certificates store.
-     * @return              A new SslValidatorDialog instance, or NULL if the operation can not be recovered
+     * @return              A new SslValidatorDialog instance. NULL if the operation can not be recovered
      *                      by setting the certificate as reliable.
      */
     public static SslValidatorDialog newInstance(Context context, RemoteOperationResult result, OnSslValidatorListener listener) {
@@ -110,13 +111,19 @@ public class SslValidatorDialog extends Dialog {
                             if (mListener != null)
                                 mListener.onSavedCertificate();
                             else
-                                Log.d(TAG, "Nobody there to notify the certificate was saved");
+                                Log_OC.d(TAG, "Nobody there to notify the certificate was saved");
                             
-                        } catch (Exception e) {
+                        } catch (GeneralSecurityException e) {
                             dismiss();
                             if (mListener != null)
                                 mListener.onFailedSavingCertificate();
-                            Log.e(TAG, "Server certificate could not be saved in the known servers trust store ", e);
+                            Log_OC.e(TAG, "Server certificate could not be saved in the known servers trust store ", e);
+                            
+                        } catch (IOException e) {
+                            dismiss();
+                            if (mListener != null)
+                                mListener.onFailedSavingCertificate();
+                            Log_OC.e(TAG, "Server certificate could not be saved in the known servers trust store ", e);
                         }
                     }
                 });
@@ -136,11 +143,11 @@ public class SslValidatorDialog extends Dialog {
                        View detailsScroll = findViewById(R.id.details_scroll);
                        if (detailsScroll.getVisibility() == View.VISIBLE) {
                            detailsScroll.setVisibility(View.GONE);
-                           ((Button)v).setText(R.string.ssl_validator_btn_details_see);
+                           ((Button) v).setText(R.string.ssl_validator_btn_details_see);
                            
                        } else {
                            detailsScroll.setVisibility(View.VISIBLE);
-                           ((Button)v).setText(R.string.ssl_validator_btn_details_hide);
+                           ((Button) v).setText(R.string.ssl_validator_btn_details_hide);
                        }
                     }
                 });
@@ -336,7 +343,7 @@ public class SslValidatorDialog extends Dialog {
     private void saveServerCert() throws KeyStoreException, NoSuchAlgorithmException, CertificateException, IOException {
         if (mException.getServerCertificate() != null) {
             // TODO make this asynchronously, it can take some time
-            OwnCloudClientUtils.addCertToKnownServersStore(mException.getServerCertificate(), getContext());
+            NetworkUtils.addCertToKnownServersStore(mException.getServerCertificate(), getContext());
         }
     }
 

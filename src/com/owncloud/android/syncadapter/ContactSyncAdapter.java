@@ -3,9 +3,8 @@
  *   Copyright (C) 2012-2013 ownCloud Inc.
  *
  *   This program is free software: you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation, either version 2 of the License, or
- *   (at your option) any later version.
+ *   it under the terms of the GNU General Public License version 2,
+ *   as published by the Free Software Foundation.
  *
  *   This program is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -25,8 +24,9 @@ import java.io.IOException;
 import org.apache.http.client.methods.HttpPut;
 import org.apache.http.entity.ByteArrayEntity;
 
-import com.owncloud.android.AccountUtils;
-import com.owncloud.android.authenticator.AccountAuthenticator;
+import com.owncloud.android.authentication.AccountUtils;
+import com.owncloud.android.lib.accounts.OwnCloudAccount;
+
 
 import android.accounts.Account;
 import android.accounts.AccountManager;
@@ -53,7 +53,7 @@ public class ContactSyncAdapter extends AbstractOwnCloudSyncAdapter {
     public void onPerformSync(Account account, Bundle extras, String authority,
             ContentProviderClient provider, SyncResult syncResult) {
         setAccount(account);
-        setContentProvider(provider);
+        setContentProviderClient(provider);
         Cursor c = getLocalContacts(false);
         if (c.moveToFirst()) {
             do {
@@ -92,7 +92,7 @@ public class ContactSyncAdapter extends AbstractOwnCloudSyncAdapter {
         AccountManager am = getAccountManager();
         @SuppressWarnings("deprecation")
         String uri = am.getUserData(getAccount(),
-                AccountAuthenticator.KEY_OC_URL).replace(
+                OwnCloudAccount.Constants.KEY_OC_URL).replace(
                 AccountUtils.WEBDAV_PATH_2_0, AccountUtils.CARDDAV_PATH_2_0);
         uri += "/addressbooks/"
                 + getAccount().name.substring(0,

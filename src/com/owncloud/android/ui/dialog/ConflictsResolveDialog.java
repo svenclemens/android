@@ -3,9 +3,8 @@
  *   Copyright (C) 2012-2013 ownCloud Inc.
  *
  *   This program is free software: you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation, either version 2 of the License, or
- *   (at your option) any later version.
+ *   it under the terms of the GNU General Public License version 2,
+ *   as published by the Free Software Foundation.
  *
  *   This program is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -29,6 +28,8 @@ import android.support.v4.app.FragmentTransaction;
 import com.actionbarsherlock.app.SherlockDialogFragment;
 import com.actionbarsherlock.app.SherlockFragmentActivity;
 import com.owncloud.android.R;
+import com.owncloud.android.utils.DisplayUtils;
+
 
 /**
  * Dialog which will be displayed to user upon keep-in-sync file conflict.
@@ -59,7 +60,7 @@ public class ConflictsResolveDialog extends SherlockDialogFragment {
     public Dialog onCreateDialog(Bundle savedInstanceState) {
         String remotepath = getArguments().getString("remotepath");
         return new AlertDialog.Builder(getSherlockActivity())
-                   .setIcon(R.drawable.icon)
+                   .setIcon(DisplayUtils.getSeasonalIconId())
                    .setTitle(R.string.conflict_title)
                    .setMessage(String.format(getString(R.string.conflict_message), remotepath))
                    .setPositiveButton(R.string.conflict_overwrite,
@@ -68,7 +69,7 @@ public class ConflictsResolveDialog extends SherlockDialogFragment {
                            @Override
                            public void onClick(DialogInterface dialog, int which) {
                                if (mListener != null)
-                                   mListener.ConflictDecisionMade(Decision.OVERWRITE);
+                                   mListener.conflictDecisionMade(Decision.OVERWRITE);
                            }
                        })
                    .setNeutralButton(R.string.conflict_keep_both,
@@ -76,7 +77,7 @@ public class ConflictsResolveDialog extends SherlockDialogFragment {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
                                 if (mListener != null)
-                                    mListener.ConflictDecisionMade(Decision.KEEP_BOTH);
+                                    mListener.conflictDecisionMade(Decision.KEEP_BOTH);
                             }
                         })
                    .setNegativeButton(R.string.conflict_dont_upload,
@@ -84,7 +85,7 @@ public class ConflictsResolveDialog extends SherlockDialogFragment {
                            @Override
                            public void onClick(DialogInterface dialog, int which) {
                                if (mListener != null)
-                                   mListener.ConflictDecisionMade(Decision.CANCEL);
+                                   mListener.conflictDecisionMade(Decision.CANCEL);
                            }
                    })
                    .create();
@@ -112,10 +113,10 @@ public class ConflictsResolveDialog extends SherlockDialogFragment {
     
     @Override
     public void onCancel(DialogInterface dialog) {
-        mListener.ConflictDecisionMade(Decision.CANCEL);
+        mListener.conflictDecisionMade(Decision.CANCEL);
     }
     
     public interface OnConflictDecisionMadeListener {
-        public void ConflictDecisionMade(Decision decision);
+        public void conflictDecisionMade(Decision decision);
     }
 }

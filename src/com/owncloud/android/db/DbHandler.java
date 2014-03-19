@@ -1,10 +1,10 @@
 /* ownCloud Android client application
  *   Copyright (C) 2011-2012  Bartek Przybylski
+ *   Copyright (C) 2012-2013 ownCloud Inc.
  *
  *   This program is free software: you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation, either version 2 of the License, or
- *   (at your option) any later version.
+ *   it under the terms of the GNU General Public License version 2,
+ *   as published by the Free Software Foundation.
  *
  *   This program is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -17,12 +17,14 @@
  */
 package com.owncloud.android.db;
 
+import com.owncloud.android.MainApp;
+import com.owncloud.android.utils.Log_OC;
+
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
-import android.util.Log;
 
 /**
  * Custom database helper for ownCloud
@@ -33,7 +35,7 @@ import android.util.Log;
 public class DbHandler {
     private SQLiteDatabase mDB;
     private OpenerHelper mHelper;
-    private final String mDatabaseName = "ownCloud";
+    private final String mDatabaseName;
     private final int mDatabaseVersion = 3;
 
     private final String TABLE_INSTANT_UPLOAD = "instant_upload";
@@ -42,6 +44,7 @@ public class DbHandler {
     public static final int UPLOAD_STATUS_UPLOAD_FAILED = 1;
 
     public DbHandler(Context context) {
+        mDatabaseName = MainApp.getDBName();
         mHelper = new OpenerHelper(context);
         mDB = mHelper.getWritableDatabase();
     }
@@ -57,7 +60,7 @@ public class DbHandler {
         cv.put("attempt", UPLOAD_STATUS_UPLOAD_LATER);
         cv.put("message", message);
         long result = mDB.insert(TABLE_INSTANT_UPLOAD, null, cv);
-        Log.d(TABLE_INSTANT_UPLOAD, "putFileForLater returns with: " + result + " for file: " + filepath);
+        Log_OC.d(TABLE_INSTANT_UPLOAD, "putFileForLater returns with: " + result + " for file: " + filepath);
         return result != -1;
     }
 
@@ -66,7 +69,7 @@ public class DbHandler {
         cv.put("attempt", status);
         cv.put("message", message);
         int result = mDB.update(TABLE_INSTANT_UPLOAD, cv, "path=?", new String[] { filepath });
-        Log.d(TABLE_INSTANT_UPLOAD, "updateFileState returns with: " + result + " for file: " + filepath);
+        Log_OC.d(TABLE_INSTANT_UPLOAD, "updateFileState returns with: " + result + " for file: " + filepath);
         return result;
     }
 
@@ -89,7 +92,7 @@ public class DbHandler {
      */
     public boolean removeIUPendingFile(String localPath) {
         long result = mDB.delete(TABLE_INSTANT_UPLOAD, "path = ?", new String[] { localPath });
-        Log.d(TABLE_INSTANT_UPLOAD, "delete returns with: " + result + " for file: " + localPath);
+        Log_OC.d(TABLE_INSTANT_UPLOAD, "delete returns with: " + result + " for file: " + localPath);
         return result != 0;
 
     }

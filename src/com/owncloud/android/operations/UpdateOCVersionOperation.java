@@ -2,9 +2,8 @@
  *   Copyright (C) 2012-2013 ownCloud Inc.
  *
  *   This program is free software: you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation, either version 2 of the License, or
- *   (at your option) any later version.
+ *   it under the terms of the GNU General Public License version 2,
+ *   as published by the Free Software Foundation.
  *
  *   This program is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -23,17 +22,19 @@ import org.apache.commons.httpclient.methods.GetMethod;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import com.owncloud.android.authentication.AccountUtils;
+import com.owncloud.android.lib.accounts.OwnCloudAccount;
+import com.owncloud.android.lib.network.OwnCloudClient;
+import com.owncloud.android.lib.operations.common.RemoteOperation;
+import com.owncloud.android.lib.operations.common.RemoteOperationResult;
+import com.owncloud.android.lib.operations.common.RemoteOperationResult.ResultCode;
+import com.owncloud.android.lib.utils.OwnCloudVersion;
+import com.owncloud.android.utils.Log_OC;
+
 import android.accounts.Account;
 import android.accounts.AccountManager;
 import android.content.Context;
-import android.util.Log;
 
-import com.owncloud.android.AccountUtils;
-import com.owncloud.android.authenticator.AccountAuthenticator;
-import com.owncloud.android.operations.RemoteOperationResult.ResultCode;
-import com.owncloud.android.utils.OwnCloudVersion;
-
-import eu.alefzero.webdav.WebdavClient;
 
 /**
  * Remote operation that checks the version of an ownCloud server and stores it locally
@@ -46,18 +47,20 @@ public class UpdateOCVersionOperation extends RemoteOperation {
 
     private Account mAccount;
     private Context mContext;
+    private OwnCloudVersion mOwnCloudVersion;
     
     
     public UpdateOCVersionOperation(Account account, Context context) {
         mAccount = account;
         mContext = context;
+        mOwnCloudVersion = null;
     }
     
     
     @Override
-    protected RemoteOperationResult run(WebdavClient client) {
+    protected RemoteOperationResult run(OwnCloudClient client) {
         AccountManager accountMngr = AccountManager.get(mContext); 
-        String statUrl = accountMngr.getUserData(mAccount, AccountAuthenticator.KEY_OC_BASE_URL);
+        String statUrl = accountMngr.getUserData(mAccount, OwnCloudAccount.Constants.KEY_OC_BASE_URL);
         statUrl += AccountUtils.STATUS_PATH;
         RemoteOperationResult result = null;
         GetMethod get = null;
@@ -66,21 +69,24 @@ public class UpdateOCVersionOperation extends RemoteOperation {
             int status = client.executeMethod(get);
             if (status != HttpStatus.SC_OK) {
                 client.exhaustResponse(get.getResponseBodyAsStream());
-                result = new RemoteOperationResult(false, status);
+                result = new RemoteOperationResult(false, status, get.getResponseHeaders());
                 
             } else {
                 String response = get.getResponseBodyAsString();
                 if (response != null) {
                     JSONObject json = new JSONObject(response);
                     if (json != null && json.getString("version") != null) {
-                        OwnCloudVersion ocver = new OwnCloudVersion(json.getString("version"));
-                        if (ocver.isVersionValid()) {
-                            accountMngr.setUserData(mAccount, AccountAuthenticator.KEY_OC_VERSION, ocver.toString());
-                            Log.d(TAG, "Got new OC version " + ocver.toString());
+                        String version = json.getString("version");
+                        String versionstring = json.getString("versionstring");
+                        mOwnCloudVersion = new OwnCloudVersion(version, versionstring);
+                        if (mOwnCloudVersion.isVersionValid()) {
+                            accountMngr.setUserData(mAccount, OwnCloudAccount.Constants.KEY_OC_VERSION, mOwnCloudVersion.getVersion());
+                            accountMngr.setUserData(mAccount, OwnCloudAccount.Constants.KEY_OC_VERSION_STRING, mOwnCloudVersion.getVersionString());
+                            Log_OC.d(TAG, "Got new OC version " + mOwnCloudVersion.toString());
                             result = new RemoteOperationResult(ResultCode.OK);
                             
                         } else {
-                            Log.w(TAG, "Invalid version number received from server: " + json.getString("version"));
+                            Log_OC.w(TAG, "Invalid version number received from server: " + json.getString("version"));
                             result = new RemoteOperationResult(RemoteOperationResult.ResultCode.BAD_OC_VERSION);
                         }
                     }
@@ -89,21 +95,26 @@ public class UpdateOCVersionOperation extends RemoteOperation {
                     result = new RemoteOperationResult(RemoteOperationResult.ResultCode.INSTANCE_NOT_CONFIGURED);
                 }
             }
-            Log.i(TAG, "Check for update of ownCloud server version at " + client.getBaseUri() + ": " + result.getLogMessage());
+            Log_OC.i(TAG, "Check for update of ownCloud server version at " + client.getWebdavUri() + ": " + result.getLogMessage());
             
         } catch (JSONException e) {
             result = new RemoteOperationResult(RemoteOperationResult.ResultCode.INSTANCE_NOT_CONFIGURED);
-            Log.e(TAG, "Check for update of ownCloud server version at " + client.getBaseUri() + ": " + result.getLogMessage(), e);
+            Log_OC.e(TAG, "Check for update of ownCloud server version at " + client.getWebdavUri() + ": " + result.getLogMessage(), e);
                 
         } catch (Exception e) {
             result = new RemoteOperationResult(e);
-            Log.e(TAG, "Check for update of ownCloud server version at " + client.getBaseUri() + ": " + result.getLogMessage(), e);
+            Log_OC.e(TAG, "Check for update of ownCloud server version at " + client.getWebdavUri() + ": " + result.getLogMessage(), e);
             
         } finally {
             if (get != null) 
                 get.releaseConnection();
         }
         return result;
+    }
+
+
+    public OwnCloudVersion getOCVersion() {
+        return mOwnCloudVersion;
     }
 
 }

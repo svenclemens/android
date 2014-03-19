@@ -2,9 +2,8 @@
  *   Copyright (C) 2012-2013 ownCloud Inc.
  *
  *   This program is free software: you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation, either version 2 of the License, or
- *   (at your option) any later version.
+ *   it under the terms of the GNU General Public License version 2,
+ *   as published by the Free Software Foundation.
  *
  *   This program is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -18,21 +17,16 @@
 
 package com.owncloud.android.ui.dialog;
 
-import java.io.InputStream;
-import java.util.Scanner;
-
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.DialogInterface;
-import android.net.Uri;
 import android.os.Bundle;
-import android.view.LayoutInflater;
-import android.view.View;
 import android.webkit.WebView;
-import android.widget.TextView;
 
 import com.actionbarsherlock.app.SherlockDialogFragment;
 import com.owncloud.android.R;
+import com.owncloud.android.utils.DisplayUtils;
+
 
 /**
  * Dialog to show the contents of res/raw/CHANGELOG.txt
@@ -70,7 +64,7 @@ public class ChangelogDialog extends SherlockDialogFragment {
         AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
         
         Dialog dialog = builder.setView(webview)
-                                .setIcon(R.drawable.icon)
+                                .setIcon(DisplayUtils.getSeasonalIconId())
                                 //.setTitle(R.string.whats_new)
                                 .setPositiveButton(R.string.common_ok,
                                         new DialogInterface.OnClickListener() {

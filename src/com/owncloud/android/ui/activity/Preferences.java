@@ -3,9 +3,8 @@
  *   Copyright (C) 2012-2013 ownCloud Inc.
  *
  *   This program is free software: you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation, either version 2 of the License, or
- *   (at your option) any later version.
+ *   it under the terms of the GNU General Public License version 2,
+ *   as published by the Free Software Foundation.
  *
  *   This program is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -18,57 +17,58 @@
  */
 package com.owncloud.android.ui.activity;
 
-import java.util.Vector;
-
+import android.accounts.Account;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager.NameNotFoundException;
+import android.net.Uri;
 import android.os.Bundle;
 import android.preference.CheckBoxPreference;
-import android.preference.ListPreference;
 import android.preference.Preference;
-import android.preference.PreferenceManager;
 import android.preference.Preference.OnPreferenceChangeListener;
 import android.preference.Preference.OnPreferenceClickListener;
-import android.util.Log;
+import android.preference.PreferenceCategory;
+import android.preference.PreferenceManager;
 
 import com.actionbarsherlock.app.ActionBar;
 import com.actionbarsherlock.app.SherlockPreferenceActivity;
 import com.actionbarsherlock.view.Menu;
 import com.actionbarsherlock.view.MenuItem;
-import com.owncloud.android.OwnCloudSession;
-import com.owncloud.android.db.DbHandler;
-
 import com.owncloud.android.R;
+import com.owncloud.android.authentication.AccountUtils;
+import com.owncloud.android.db.DbHandler;
+import com.owncloud.android.utils.DisplayUtils;
+import com.owncloud.android.utils.Log_OC;
+
 
 /**
  * An Activity that allows the user to change the application's settings.
  * 
  * @author Bartek Przybylski
- * 
+ * @author David A. Velasco
  */
-public class Preferences extends SherlockPreferenceActivity implements
-        OnPreferenceChangeListener{
+public class Preferences extends SherlockPreferenceActivity {
+    
     private static final String TAG = "OwnCloudPreferences";
-    private final int mNewSession = 47;
-    private final int mEditSession = 48;
     private DbHandler mDbHandler;
-    private Vector<OwnCloudSession> mSessions;
-    //private Account[] mAccounts;
-    //private ListPreference mAccountList;
-    private ListPreference mTrackingUpdateInterval;
-    private CheckBoxPreference mDeviceTracking;
     private CheckBoxPreference pCode;
-    private int mSelectedMenuItem;
+    //private CheckBoxPreference pLogging;
+    //private Preference pLoggingHistory;
+    private Preference pAboutApp;
 
+
+    @SuppressWarnings("deprecation")
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         mDbHandler = new DbHandler(getBaseContext());
-        mSessions = new Vector<OwnCloudSession>();
         addPreferencesFromResource(R.xml.preferences);
         //populateAccountList();
         ActionBar actionBar = getSherlock().getActionBar();
+        actionBar.setIcon(DisplayUtils.getSeasonalIconId());
         actionBar.setDisplayHomeAsUpEnabled(true);
+        
         Preference p = findPreference("manage_account");
         if (p != null)
         p.setOnPreferenceClickListener(new OnPreferenceClickListener() {
@@ -81,18 +81,13 @@ public class Preferences extends SherlockPreferenceActivity implements
         });
         
         pCode = (CheckBoxPreference) findPreference("set_pincode");
-         
-        
         if (pCode != null){
-            
             pCode.setOnPreferenceChangeListener(new OnPreferenceChangeListener() {
                 @Override
                 public boolean onPreferenceChange(Preference preference, Object newValue) {
-                                          
                     Intent i = new Intent(getApplicationContext(), PinCodeActivity.class);
                     i.putExtra(PinCodeActivity.EXTRA_ACTIVITY, "preferences");
                     i.putExtra(PinCodeActivity.EXTRA_NEW_STATE, newValue.toString());
-                    
                     startActivity(i);
                     
                     return true;
@@ -101,56 +96,180 @@ public class Preferences extends SherlockPreferenceActivity implements
             
         }
         
-    }
+        
 
+        PreferenceCategory preferenceCategory = (PreferenceCategory) findPreference("more");
+        
+        boolean helpEnabled = getResources().getBoolean(R.bool.help_enabled);
+        Preference pHelp =  findPreference("help");
+        if (pHelp != null ){
+            if (helpEnabled) {
+                pHelp.setOnPreferenceClickListener(new OnPreferenceClickListener() {
+                    @Override
+                    public boolean onPreferenceClick(Preference preference) {
+                        String helpWeb   =(String) getText(R.string.url_help);
+                        if (helpWeb != null && helpWeb.length() > 0) {
+                            Uri uriUrl = Uri.parse(helpWeb);
+                            Intent intent = new Intent(Intent.ACTION_VIEW, uriUrl);
+                            startActivity(intent);
+                        }
+                        return true;
+                    }
+                });
+            } else {
+                preferenceCategory.removePreference(pHelp);
+            }
+            
+        }
+        
+       
+       boolean recommendEnabled = getResources().getBoolean(R.bool.recommend_enabled);
+       Preference pRecommend =  findPreference("recommend");
+        if (pRecommend != null){
+            if (recommendEnabled) {
+                pRecommend.setOnPreferenceClickListener(new OnPreferenceClickListener() {
+                    @Override
+                    public boolean onPreferenceClick(Preference preference) {
+
+                        Intent intent = new Intent(Intent.ACTION_SENDTO); 
+                        intent.setType("text/plain");
+                        intent.setData(Uri.parse(getString(R.string.mail_recommend))); 
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); 
+                        
+                        String appName = getString(R.string.app_name);
+                        String downloadUrl = getString(R.string.url_app_download);
+                        Account currentAccount = AccountUtils.getCurrentOwnCloudAccount(Preferences.this);
+                        String username = currentAccount.name.substring(0, currentAccount.name.lastIndexOf('@'));
+                        
+                        String recommendSubject = String.format(getString(R.string.recommend_subject), appName);
+                        String recommendText = String.format(getString(R.string.recommend_text), appName, downloadUrl, username);
+                        
+                        intent.putExtra(Intent.EXTRA_SUBJECT, recommendSubject);
+                        intent.putExtra(Intent.EXTRA_TEXT, recommendText);
+                        startActivity(intent);
+
+
+                        return(true);
+
+                    }
+                });
+            } else {
+                preferenceCategory.removePreference(pRecommend);
+            }
+            
+        }
+        
+        boolean feedbackEnabled = getResources().getBoolean(R.bool.feedback_enabled);
+        Preference pFeedback =  findPreference("feedback");
+        if (pFeedback != null){
+            if (feedbackEnabled) {
+                pFeedback.setOnPreferenceClickListener(new OnPreferenceClickListener() {
+                    @Override
+                    public boolean onPreferenceClick(Preference preference) {
+                        String feedbackMail   =(String) getText(R.string.mail_feedback);
+                        String feedback   =(String) getText(R.string.prefs_feedback);
+                        Intent intent = new Intent(Intent.ACTION_SENDTO); 
+                        intent.setType("text/plain");
+                        intent.putExtra(Intent.EXTRA_SUBJECT, feedback);
+                        
+                        intent.setData(Uri.parse(feedbackMail)); 
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); 
+                        startActivity(intent);
+                        
+                        return true;
+                    }
+                });
+            } else {
+                preferenceCategory.removePreference(pFeedback);
+            }
+            
+        }
+        
+        boolean imprintEnabled = getResources().getBoolean(R.bool.imprint_enabled);
+        Preference pImprint =  findPreference("imprint");
+        if (pImprint != null) {
+            if (imprintEnabled) {
+                pImprint.setOnPreferenceClickListener(new OnPreferenceClickListener() {
+                    @Override
+                    public boolean onPreferenceClick(Preference preference) {
+                        String imprintWeb = (String) getText(R.string.url_imprint);
+                        if (imprintWeb != null && imprintWeb.length() > 0) {
+                            Uri uriUrl = Uri.parse(imprintWeb);
+                            Intent intent = new Intent(Intent.ACTION_VIEW, uriUrl);
+                            startActivity(intent);
+                        }
+                        //ImprintDialog.newInstance(true).show(preference.get, "IMPRINT_DIALOG");
+                        return true;
+                    }
+                });
+            } else {
+                preferenceCategory.removePreference(pImprint);
+            }
+        }
+            
+        /* About App */
+       pAboutApp = (Preference) findPreference("about_app");
+       if (pAboutApp != null) { 
+               pAboutApp.setTitle(String.format(getString(R.string.about_android), getString(R.string.app_name)));
+               PackageInfo pkg;
+               try {
+                   pkg = getPackageManager().getPackageInfo(getPackageName(), 0);
+                   pAboutApp.setSummary(String.format(getString(R.string.about_version), pkg.versionName));
+               } catch (NameNotFoundException e) {
+                   Log_OC.e(TAG, "Error while showing about dialog", e);
+               }
+       }
+       
+       /* DISABLED FOR RELEASE UNTIL FIXED 
+       pLogging = (CheckBoxPreference) findPreference("log_to_file");
+       if (pLogging != null) {
+           pLogging.setOnPreferenceChangeListener(new OnPreferenceChangeListener() {
+               @Override
+               public boolean onPreferenceChange(Preference preference, Object newValue) {
+                   
+                   String logpath = Environment.getExternalStorageDirectory()+File.separator+"owncloud"+File.separator+"log";
+                
+                   if(!pLogging.isChecked()) {
+                       Log_OC.d("Debug", "start logging");
+                       Log_OC.v("PATH", logpath);
+                       Log_OC.startLogging(logpath);
+                   }
+                   else {
+                       Log_OC.d("Debug", "stop logging");
+                       Log_OC.stopLogging();
+                   }
+                   return true;
+               }
+           });
+       }
+       
+       pLoggingHistory = (Preference) findPreference("log_history");
+       if (pLoggingHistory != null) {
+           pLoggingHistory.setOnPreferenceClickListener(new OnPreferenceClickListener() {
+            
+            @Override
+            public boolean onPreferenceClick(Preference preference) {
+                Intent intent = new Intent(getApplicationContext(),LogHistoryActivity.class);
+                startActivity(intent);
+                return true;
+            }
+        });
+       }
+       */
+       
+    }
 
     @Override
     protected void onResume() {
-        // TODO Auto-generated method stub
-        SharedPreferences appPrefs = PreferenceManager
-                .getDefaultSharedPreferences(getApplicationContext());
-        
+        SharedPreferences appPrefs = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
         boolean state = appPrefs.getBoolean("set_pincode", false);
         pCode.setChecked(state);
-        
         super.onResume();
     }
 
-
-
-    /**
-     * Populates the account selector
-     *-/
-    private void populateAccountList() {
-        AccountManager accMan = AccountManager.get(this);
-        mAccounts = accMan.getAccountsByType(AccountAuthenticator.ACCOUNT_TYPE);
-        mAccountList = (ListPreference) findPreference("select_oc_account");
-        mAccountList.setOnPreferenceChangeListener(this);
-
-        // Display the name of the current account if there is any
-        Account defaultAccount = AccountUtils.getCurrentOwnCloudAccount(this);
-        if (defaultAccount != null) {
-            mAccountList.setSummary(defaultAccount.name);
-        }
-        
-        // Transform accounts into array of string for preferences to use
-        String[] accNames = new String[mAccounts.length];
-        for (int i = 0; i < mAccounts.length; i++) {
-            Account account = mAccounts[i];
-            accNames[i] = account.name;
-        }
-
-        mAccountList.setEntries(accNames);
-        mAccountList.setEntryValues(accNames);
-    }*/
-
-    
-    
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         super.onCreateOptionsMenu(menu);
-        //MenuInflater inflater = getSherlock().getMenuInflater();
-        //inflater.inflate(R.menu.prefs_menu, menu);
         return true;
     }
 
@@ -160,28 +279,13 @@ public class Preferences extends SherlockPreferenceActivity implements
         Intent intent;
 
         switch (item.getItemId()) {
-        //case R.id.addSessionItem:
-        case 1:
-            intent = new Intent(this, PreferencesNewSession.class);
-            startActivityForResult(intent, mNewSession);
-            break;
-        case R.id.SessionContextEdit:
-            intent = new Intent(this, PreferencesNewSession.class);
-            intent.putExtra("sessionId", mSessions.get(mSelectedMenuItem)
-                    .getEntryId());
-            intent.putExtra("sessionName", mSessions.get(mSelectedMenuItem)
-                    .getName());
-            intent.putExtra("sessionURL", mSessions.get(mSelectedMenuItem)
-                    .getUrl());
-            startActivityForResult(intent, mEditSession);
-            break;
         case android.R.id.home:
             intent = new Intent(getBaseContext(), FileDisplayActivity.class);
             intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
             startActivity(intent);
             break;
         default:
-            Log.w(TAG, "Unknown menu item triggered");
+            Log_OC.w(TAG, "Unknown menu item triggered");
             return false;
         }
         return true;
@@ -197,41 +301,5 @@ public class Preferences extends SherlockPreferenceActivity implements
         mDbHandler.close();
         super.onDestroy();
     }
-
     
-    
-    @Override
-    /**
-     * Updates various summaries after updates. Also starts and stops 
-     * the
-     */
-    public boolean onPreferenceChange(Preference preference, Object newValue) {
-        // Update current account summary
-        /*if (preference.equals(mAccountList)) {
-            mAccountList.setSummary(newValue.toString());
-        }
-
-        // Update tracking interval summary
-        else*/ if (preference.equals(mTrackingUpdateInterval)) {
-            String trackingSummary = getResources().getString(
-                    R.string.prefs_trackmydevice_interval_summary);
-            trackingSummary = String.format(trackingSummary,
-                    newValue.toString());
-            mTrackingUpdateInterval.setSummary(trackingSummary);
-        }
-
-        // Start or stop tracking service
-        else if (preference.equals(mDeviceTracking)) {
-            Intent locationServiceIntent = new Intent();
-            locationServiceIntent
-                    .setAction("com.owncloud.android.location.LocationLauncher");
-            locationServiceIntent.putExtra("TRACKING_SETTING",
-                    (Boolean) newValue);
-            sendBroadcast(locationServiceIntent);
-        } 
-        return true;
-    }
-    
-    
-
 }

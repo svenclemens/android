@@ -2,9 +2,8 @@
  *   Copyright (C) 2012-2013 ownCloud Inc.
  *
  *   This program is free software: you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation, either version 2 of the License, or
- *   (at your option) any later version.
+ *   it under the terms of the GNU General Public License version 2,
+ *   as published by the Free Software Foundation.
  *
  *   This program is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,14 +19,17 @@ package com.owncloud.android.utils;
 
 import java.io.File;
 
+import com.owncloud.android.MainApp;
+import com.owncloud.android.R;
+import com.owncloud.android.datamodel.OCFile;
+import com.owncloud.android.lib.operations.common.RemoteFile;
+
 import android.annotation.SuppressLint;
+import android.content.Context;
 import android.net.Uri;
 import android.os.Environment;
 import android.os.StatFs;
-import android.util.Log;
 
-import com.owncloud.android.datamodel.OCFile;
-import com.owncloud.android.files.services.InstantUploadService;
 
 /**
  * Static methods to help in access to local file system.
@@ -35,11 +37,11 @@ import com.owncloud.android.files.services.InstantUploadService;
  * @author David A. Velasco
  */
 public class FileStorageUtils {
-    private static final String LOG_TAG = "FileStorageUtils";
+    //private static final String LOG_TAG = "FileStorageUtils";
 
     public static final String getSavePath(String accountName) {
         File sdCard = Environment.getExternalStorageDirectory();
-        return sdCard.getAbsolutePath() + "/owncloud/" + Uri.encode(accountName, "@");
+        return sdCard.getAbsolutePath() + "/" + MainApp.getDataFolder() + "/" + Uri.encode(accountName, "@");
         // URL encoding is an 'easy fix' to overcome that NTFS and FAT32 don't allow ":" in file names, that can be in the accountName since 0.1.190B
     }
 
@@ -49,7 +51,7 @@ public class FileStorageUtils {
 
     public static final String getTemporalPath(String accountName) {
         File sdCard = Environment.getExternalStorageDirectory();
-        return sdCard.getAbsolutePath() + "/owncloud/tmp/" + Uri.encode(accountName, "@");
+        return sdCard.getAbsolutePath() + "/" + MainApp.getDataFolder() + "/tmp/" + Uri.encode(accountName, "@");
             // URL encoding is an 'easy fix' to overcome that NTFS and FAT32 don't allow ":" in file names, that can be in the accountName since 0.1.190B
     }
 
@@ -65,26 +67,54 @@ public class FileStorageUtils {
         }
 
     }
-
-    // to ensure we will not add the slash twice between filename and
-    // folder-name
-    private static String getFileName(String filepath) {
-        if (filepath != null && !"".equals(filepath)) {
-            int psi = filepath.lastIndexOf('/');
-            String filename = filepath;
-            if (psi > -1) {
-                filename = filepath.substring(psi + 1, filepath.length());
-                Log.d(LOG_TAG, "extracted filename :" + filename);
-            }
-            return filename;
-        } else {
-            // Toast
-            Log.w(LOG_TAG, "the given filename was null or empty");
-            return null;
-        }
+    
+    public static final String getLogPath()  {
+        return Environment.getExternalStorageDirectory() + File.separator + MainApp.getDataFolder() + File.separator + "log";
     }
 
-    public static String getInstantUploadFilePath(String fileName) {
-        return InstantUploadService.INSTANT_UPLOAD_DIR + "/" + getFileName(fileName);
+    public static String getInstantUploadFilePath(Context context, String fileName) {
+        String uploadPath = context.getString(R.string.instant_upload_path);
+        String value = uploadPath + OCFile.PATH_SEPARATOR +  (fileName == null ? "" : fileName);
+        return value;
     }
+    
+    public static String getParentPath(String remotePath) {
+        String parentPath = new File(remotePath).getParent();
+        parentPath = parentPath.endsWith(OCFile.PATH_SEPARATOR) ? parentPath : parentPath + OCFile.PATH_SEPARATOR;
+        return parentPath;
+    }
+    
+    /**
+     * Creates and populates a new {@link OCFile} object with the data read from the server.
+     * 
+     * @param remote    remote file read from the server (remote file or folder).
+     * @return          New OCFile instance representing the remote resource described by we.
+     */
+    public static OCFile fillOCFile(RemoteFile remote) {
+        OCFile file = new OCFile(remote.getRemotePath());
+        file.setCreationTimestamp(remote.getCreationTimestamp());
+        file.setFileLength(remote.getLength());
+        file.setMimetype(remote.getMimeType());
+        file.setModificationTimestamp(remote.getModifiedTimestamp());
+        file.setEtag(remote.getEtag());
+        
+        return file;
+    }
+    
+    /**
+     * Creates and populates a new {@link RemoteFile} object with the data read from an {@link OCFile}.
+     * 
+     * @param oCFile    OCFile 
+     * @return          New RemoteFile instance representing the resource described by ocFile.
+     */
+    public static RemoteFile fillRemoteFile(OCFile ocFile){
+        RemoteFile file = new RemoteFile(ocFile.getRemotePath());
+        file.setCreationTimestamp(ocFile.getCreationTimestamp());
+        file.setLength(ocFile.getFileLength());
+        file.setMimeType(ocFile.getMimetype());
+        file.setModifiedTimestamp(ocFile.getModificationTimestamp());
+        file.setEtag(ocFile.getEtag());
+        return file;
+    }
+  
 }

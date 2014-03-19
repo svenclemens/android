@@ -3,9 +3,8 @@
  *   Copyright (C) 2012-2013 ownCloud Inc.
  *
  *   This program is free software: you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation, either version 2 of the License, or
- *   (at your option) any later version.
+ *   it under the terms of the GNU General Public License version 2,
+ *   as published by the Free Software Foundation.
  *
  *   This program is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -22,12 +21,14 @@ package com.owncloud.android.files.managers;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.owncloud.android.R;
+import com.owncloud.android.utils.DisplayUtils;
+
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.content.Context;
 import android.widget.RemoteViews;
 
-import com.owncloud.android.R;
 
 public class OCNotificationManager {
 
@@ -101,7 +102,7 @@ public class OCNotificationManager {
         
         switch (type) {
             case NOTIFICATION_SIMPLE:
-                notification = new Notification(R.drawable.icon, data.getText(), System.currentTimeMillis());
+                notification = new Notification(DisplayUtils.getSeasonalIconId(), data.getText(), System.currentTimeMillis());
                 break;
             case NOTIFICATION_PROGRESS:
                 notification = new Notification();
@@ -139,7 +140,7 @@ public class OCNotificationManager {
                                                               false);
                 return true;
             case NOTIFICATION_SIMPLE:
-                pair.mNotificaiton = new Notification(R.drawable.icon,
+                pair.mNotificaiton = new Notification(DisplayUtils.getSeasonalIconId(),
                                                       data.getText(), System.currentTimeMillis());
                 mNM.notify(notification_id, pair.mNotificaiton);
                 return true;

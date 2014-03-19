@@ -1,0 +1,12 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<resources>
+  <string name="actionbar_settings">అమరికలు</string>
+  <string name="prefs_category_more">మరిన్ని</string>
+  <string name="prefs_help">సహాయం</string>
+  <string name="auth_username">వాడుకరి పేరు</string>
+  <string name="auth_password">సంకేతపదం</string>
+  <string name="common_yes">అవును</string>
+  <string name="common_no">కాదు</string>
+  <string name="common_cancel">రద్దుచేయి</string>
+  <string name="common_error">పొరపాటు</string>
+</resources>

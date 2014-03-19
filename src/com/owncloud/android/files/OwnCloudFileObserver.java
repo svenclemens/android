@@ -3,9 +3,8 @@
  *   Copyright (C) 2012-2013 ownCloud Inc.
  *
  *   This program is free software: you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation, either version 2 of the License, or
- *   (at your option) any later version.
+ *   it under the terms of the GNU General Public License version 2,
+ *   as published by the Free Software Foundation.
  *
  *   This program is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -23,62 +22,70 @@ import java.io.File;
 
 import com.owncloud.android.datamodel.FileDataStorageManager;
 import com.owncloud.android.datamodel.OCFile;
-import com.owncloud.android.network.OwnCloudClientUtils;
-import com.owncloud.android.operations.RemoteOperationResult;
+import com.owncloud.android.lib.operations.common.RemoteOperationResult;
 import com.owncloud.android.operations.SynchronizeFileOperation;
-import com.owncloud.android.operations.RemoteOperationResult.ResultCode;
+import com.owncloud.android.lib.operations.common.RemoteOperationResult.ResultCode;
 import com.owncloud.android.ui.activity.ConflictsResolveActivity;
-
-import eu.alefzero.webdav.WebdavClient;
+import com.owncloud.android.utils.Log_OC;
 
 import android.accounts.Account;
 import android.content.Context;
 import android.content.Intent;
 import android.os.FileObserver;
-import android.util.Log;
 
 public class OwnCloudFileObserver extends FileObserver {
 
-    public static int CHANGES_ONLY = CLOSE_WRITE;
+    private static int MASK = (FileObserver.MODIFY | FileObserver.CLOSE_WRITE);
     
     private static String TAG = OwnCloudFileObserver.class.getSimpleName();
     
     private String mPath;
     private int mMask;
     private Account mOCAccount;
-    //private OCFile mFile;
     private Context mContext;
+    private boolean mModified;
 
     
-    public OwnCloudFileObserver(String path, Account account, Context context, int mask) {
-        super(path, mask);
+    public OwnCloudFileObserver(String path, Account account, Context context) {
+        super(path, MASK);
         if (path == null)
             throw new IllegalArgumentException("NULL path argument received"); 
-        /*if (file == null)
-            throw new IllegalArgumentException("NULL file argument received");*/ 
         if (account == null)
             throw new IllegalArgumentException("NULL account argument received"); 
         if (context == null)
             throw new IllegalArgumentException("NULL context argument received");
-        /*if (!path.equals(file.getStoragePath()) && !path.equals(FileStorageUtils.getDefaultSavePathFor(account.name, file)))
-            throw new IllegalArgumentException("File argument is not linked to the local file set in path argument"); */
         mPath = path;
-        //mFile = file;
         mOCAccount = account;
         mContext = context; 
-        mMask = mask;
+        mModified = false;
     }
+    
     
     @Override
     public void onEvent(int event, String path) {
-        Log.d(TAG, "Got file modified with event " + event + " and path " + mPath + ((path != null) ? File.separator + path : ""));
-        if ((event & mMask) == 0) {
-            Log.wtf(TAG, "Incorrect event " + event + " sent for file " + mPath + ((path != null) ? File.separator + path : "") +
+        Log_OC.d(TAG, "Got file modified with event " + event + " and path " + mPath + ((path != null) ? File.separator + path : ""));
+        if ((event & MASK) == 0) {
+            Log_OC.wtf(TAG, "Incorrect event " + event + " sent for file " + mPath + ((path != null) ? File.separator + path : "") +
                          " with registered for " + mMask + " and original path " +
                          mPath);
-            return;
-        }
-        WebdavClient wc = OwnCloudClientUtils.createOwnCloudClient(mOCAccount, mContext);
+        } else {
+            if ((event & FileObserver.MODIFY) != 0) {
+                // file changed
+                mModified = true;
+            }
+            // not sure if it's possible, but let's assume that both kind of events can be received at the same time
+            if ((event & FileObserver.CLOSE_WRITE) != 0) {
+                // file closed
+                if (mModified) {
+                    mModified = false;
+                    startSyncOperation();
+                }
+            }
+        }  
+    }
+
+    
+    private void startSyncOperation() {
         FileDataStorageManager storageManager = new FileDataStorageManager(mOCAccount, mContext.getContentResolver());
         OCFile file = storageManager.getFileByLocalPath(mPath);     // a fresh object is needed; many things could have occurred to the file since it was registered to observe
                                                                     // again, assuming that local files are linked to a remote file AT MOST, SOMETHING TO BE DONE; 
@@ -87,9 +94,8 @@ public class OwnCloudFileObserver extends FileObserver {
                                                                     storageManager, 
                                                                     mOCAccount, 
                                                                     true, 
-                                                                    true, 
                                                                     mContext);
-        RemoteOperationResult result = sfo.execute(wc);
+        RemoteOperationResult result = sfo.execute(mOCAccount, mContext);
         if (result.getCode() == ResultCode.SYNC_CONFLICT) {
             // ISSUE 5: if the user is not running the app (this is a service!), this can be very intrusive; a notification should be preferred
             Intent i = new Intent(mContext, ConflictsResolveActivity.class);
